@@ -1,0 +1,29 @@
+{
+  "name": "babel-plugin-jsx-to-dom",
+  "version": "0.1.0",
+  "description": "Convert JSX to regular HTML code.",
+  "main": "lib/index.js",
+  "scripts": {
+    "build": "babel -d ./lib ./src",
+    "prepublish": "babel -d ./lib ./src --minified",
+    "test": "node test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/vihanb/babel-plugin-jsx-to-dom.git"
+  },
+  "author": "Vihan B <vihan@vihan.org> (vihan.org)",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/vihanb/babel-plugin-jsx-to-dom/issues"
+  },
+  "homepage": "https://github.com/vihanb/babel-plugin-jsx-to-dom#readme",
+  "devDependencies": {
+    "babel": "^6.5.2",
+    "babel-cli": "^6.18.0",
+    "babel-preset-es2015": "^6.18.0",
+    "chalk": "^1.1.3",
+    "clear": "0.0.1",
+    "diff": "^3.0.1"
+  }
+}
