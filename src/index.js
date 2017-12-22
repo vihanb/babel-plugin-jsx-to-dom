@@ -10,18 +10,20 @@ export default function (babel) {
   const string = t.stringLiteral('string');
   const length = t.identifier('length');
   const ArrayClass = t.identifier('Array');
+  const StringClass = t.identifier('String');
+  const NodeClass = t.identifier('Node');
   const zero = t.numericLiteral(0);
   const one = t.numericLiteral(1);
   
   function unwrapLiteral(node) {
     return t.conditionalExpression(
       t.binaryExpression(
-        '==',
-        t.unaryExpression('typeof', node),
-        string
+        'instanceof',
+        node,
+        NodeClass
       ),
-      text(node),
-      node
+      node,
+      text(node)
     )
   }
   
@@ -170,4 +172,5 @@ export default function (babel) {
     }
   };
 }
+
 
