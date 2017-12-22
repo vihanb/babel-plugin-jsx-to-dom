@@ -17,10 +17,18 @@ export default function (babel) {
   
   function unwrapLiteral(node) {
     return t.conditionalExpression(
-      t.binaryExpression(
-        'instanceof',
-        node,
-        NodeClass
+      t.logicalExpression(
+        '||',
+        t.binaryExpression(
+          'instanceof',
+          node,
+          NodeClass
+        ),
+        t.binaryExpression(
+          'instanceof',
+          node,
+          ArrayClass
+        )
       ),
       node,
       text(node)
