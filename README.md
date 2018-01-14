@@ -2,6 +2,8 @@
 
 Normally if you use JSX, you have to use React. **You must** add: `babel-plugin-syntax-jsx` to your project to use this.
 
+This supports namespaces which you can add by specifying the element(s)'s namespaces with a `namespace=""` attribute.
+
 ## Installation
 
 ```sh

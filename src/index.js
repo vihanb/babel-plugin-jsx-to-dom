@@ -3,6 +3,7 @@ export default function (babel) {
   
   const document = t.identifier('document');
   const createElement = t.identifier('createElement');
+  const createElementNS = t.identifier('createElementNS');
   const createTextNode = t.identifier('createTextNode');
   const appendChild = t.identifier('appendChild');
   const setAttribute = t.identifier('setAttribute');
@@ -69,22 +70,13 @@ export default function (babel) {
     )
   }
   
-  function generateHTMLNode(path, jsx) {
+  function generateHTMLNode(path, jsx, opts) {
     if (t.isJSXElement(jsx)) {
       const name = path.scope.generateUidIdentifier("elem");
-      const decl = t.variableDeclaration(
-        "const", [
-          t.variableDeclarator(
-            name,
-            t.callExpression(
-              t.memberExpression(document, createElement),
-              [t.stringLiteral(jsx.openingElement.name.name)]
-            )
-          )
-        ]
-      );
+      const tagName = jsx.openingElement.name.name;
       
-      let elems = [decl];
+      let namespace = null;
+      let elems = [];
       for (let i = 0; i < jsx.openingElement.attributes.length; i++) {
         let attribute = jsx.openingElement.attributes[i];
         if (t.isJSXSpreadAttribute(attribute)) {
@@ -108,6 +100,11 @@ export default function (babel) {
             )
           );
         } else {
+          if (attribute.name.name === "namespace") {
+            namespace = attribute.value;
+            continue;
+          }
+          
           let value = attribute.value;
           if (t.isJSXExpressionContainer(value)) value = value.expression;
           elems.push(
@@ -116,8 +113,28 @@ export default function (babel) {
         };
       }
       
+      let call;
+      
+      if (namespace) {
+        call = t.callExpression(
+          t.memberExpression(document, createElementNS),
+          [namespace, t.stringLiteral(tagName)]
+        );
+      } else {
+        call = t.callExpression(
+          t.memberExpression(document, createElement),
+          [t.stringLiteral(tagName)]
+        );
+      }
+      
+      const decl = t.variableDeclaration(
+        "const", [t.variableDeclarator(name, call)]
+      );
+      elems.unshift(decl);
+      
       for (let i = 0; i < jsx.children.length; i++) {
-        let child = generateHTMLNode(path, jsx.children[i]);
+        let child = generateHTMLNode(path, jsx.children[i], opts);
+        if (child === null) continue;
         elems.push(...child.elems);
         if (child.maybeMultiple) {
           const counter = path.scope.generateUidIdentifier('i');
@@ -145,6 +162,9 @@ export default function (babel) {
       
       return { id: name, elems: elems };
     } else if (t.isJSXText(jsx)) {
+      if (opts.noWhitespaceOnly && !jsx.value.trim()) {
+        return { id: null, elems: [] };
+      }
       return { id: text(t.stringLiteral(jsx.value)), elems: [] };
     } else if (t.isJSXExpressionContainer(jsx)) {
       const name = path.scope.generateUidIdentifier("expr");
@@ -173,12 +193,14 @@ export default function (babel) {
   return {
     name: "ast-transform", // not required
     visitor: {
-      JSXElement(path) {
-        let result = generateHTMLNode(path, path.node);
+      JSXElement(path, { opts }) {
+        let result = generateHTMLNode(path, path.node, opts);
         path.replaceWithMultiple(result.elems.concat(t.expressionStatement(result.id)));
       }
     }
   };
 }
+
+
 
 
