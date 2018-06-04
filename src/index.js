@@ -155,7 +155,7 @@ export default function (babel) {
             ]),
             append(name, child.id)
           ));
-        } else {
+        } else if (child.id !== null) {
           elems.push(append(name, child.id));
         }
       }
