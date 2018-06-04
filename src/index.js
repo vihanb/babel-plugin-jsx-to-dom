@@ -195,7 +195,15 @@ export default function (babel) {
     visitor: {
       JSXElement(path, { opts }) {
         let result = generateHTMLNode(path, path.node, opts);
-        path.replaceWithMultiple(result.elems.concat(t.expressionStatement(result.id)));
+        path.replaceWith(
+          t.callExpression(
+            t.arrowFunctionExpression(
+              [],
+              t.blockStatement(result.elems.concat(t.returnStatement(result.id)))
+            ),
+            []
+          )
+        );
       }
     }
   };
