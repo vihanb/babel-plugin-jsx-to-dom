@@ -4,6 +4,7 @@ export default function (babel) {
   const document = t.identifier('document');
   const createElement = t.identifier('createElement');
   const createElementNS = t.identifier('createElementNS');
+  const createDocumentFragment = t.identifier('createDocumentFragment');
   const createTextNode = t.identifier('createTextNode');
   const appendChild = t.identifier('appendChild');
   const setAttribute = t.identifier('setAttribute');
@@ -115,7 +116,12 @@ export default function (babel) {
       
       let call;
       
-      if (namespace) {
+      if (tagName === "DocumentFragment") {
+        call = t.callExpression(
+          t.memberExpression(document, createDocumentFragment),
+          []
+        );
+      } else if (namespace) {
         call = t.callExpression(
           t.memberExpression(document, createElementNS),
           [namespace, t.stringLiteral(tagName)]
@@ -208,6 +214,7 @@ export default function (babel) {
     }
   };
 }
+
 
 
 
