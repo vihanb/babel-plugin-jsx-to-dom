@@ -88,3 +88,51 @@ function makeTemplate(name, opts) {
     }();
 }
 ```
+
+## Namespaces
+This supports namespaces. Provide a `namespace="<namespace>"` attribute
+
+## Setting raw attributes
+This supports setting attributes not through `setAttribute` but as a property of the element. So:
+
+```js
+<video unsafe-playbackRate={playbackRate} />
+```
+
+Would output
+
+```js
+var video = document.createElement('video');
+video.playbackRate = playbackRate;
+```
+
+Without the `unsafe-` this would have generated:
+
+```js
+var video = document.createElement('video');
+video.setAttribute('playbackRate', playbackRate);
+```
+
+## Preventing whitespace from being added
+
+Normally if you have:
+
+```jsx
+<div>
+  <elem />
+  <elem />
+</div>
+```
+
+The whitepace will be added as a node. You can change this by setting the `noWhitespaceOnly` option to true.
+
+## Defaulting null/undefined
+Normally if you pass null or undefined to an attribute it won't treat it specially. This behavior is:
+
+```
+nullValues: false,
+undefinedValues: false
+```
+
+
+Setting these to true will *prevent* the attributes from being set in these cases

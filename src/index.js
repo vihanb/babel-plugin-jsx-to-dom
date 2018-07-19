@@ -1,6 +1,6 @@
 export default function (babel) {
   const { types: t } = babel;
-  
+
   const document = t.identifier('document');
   const createElement = t.identifier('createElement');
   const createElementNS = t.identifier('createElementNS');
@@ -16,7 +16,7 @@ export default function (babel) {
   const NodeClass = t.identifier('Node');
   const zero = t.numericLiteral(0);
   const one = t.numericLiteral(1);
-  
+
   function unwrapLiteral(node) {
     return t.conditionalExpression(
       t.logicalExpression(
@@ -36,14 +36,14 @@ export default function (babel) {
       text(node)
     )
   }
-  
+
   function text(string) {
     return t.callExpression(
       t.memberExpression(document, createTextNode),
       [string]
     );
   }
-  
+
   function append(node, child, returnPartial) {
     let call = t.callExpression(
       t.memberExpression(
@@ -55,27 +55,77 @@ export default function (babel) {
     if (returnPartial) return call;
     return t.expressionStatement(call)
   }
-  
+
   function declare(name, value) {
     return t.variableDeclaration("let", [t.variableDeclarator(
       name, value
     )]);
   }
-  
-  function setAttr(elem, name, value) {
-    return t.expressionStatement(
-      t.callExpression(
-        t.memberExpression(elem, setAttribute),
-        [name, value]
+
+  function setAttr(elem, name, value, opts, path) {
+    const unsafeRegex = /^unsafe-/,
+      valueId = path.scope.generateUidIdentifier("value"),
+      valueVar = declare(valueId, value),
+      insertedValue = t.isStringLiteral(value) ? value : valueId;;
+
+    let expr;
+    if (unsafeRegex.test(name.value)) {
+      expr = t.assignmentExpression(
+        '=',
+        t.memberExpression(elem, t.stringLiteral(name.value.replace(unsafeRegex, '')), true),
+        insertedValue
       )
-    )
+    } else {
+      expr = t.callExpression(
+        t.memberExpression(elem, setAttribute),
+        [name, insertedValue]
+      );
+    }
+
+    let condition = null,
+      returnStuff = [];
+
+    // Only do for computed values
+    if (!t.isStringLiteral(value)) {
+      returnStuff.push(valueVar);
+
+      if (opts.nullValues === true) {
+        condition = t.binaryExpression(
+          "!==",
+          valueId,
+          t.nullLiteral()
+        );
+      }
+
+      if (opts.undefinedValues === true) {
+        let conditionalExpr = t.binaryExpression(
+          "!==",
+          valueId,
+          t.unaryExpression("void", t.numericLiteral(0))
+        );
+
+        if (condition) {
+          condition = t.logicalExpression('||', condition, conditionalExpr);
+        } else {
+          condition = conditionalExpr;
+        }
+      }
+    }
+
+    if (condition) {
+      returnStuff.push(t.expressionStatement(t.logicalExpression("&&", condition, expr)));
+    } else {
+      returnStuff.push(t.expressionStatement(expr));
+    }
+
+    return returnStuff;
   }
-  
+
   function generateHTMLNode(path, jsx, opts) {
     if (t.isJSXElement(jsx)) {
       const name = path.scope.generateUidIdentifier("elem");
       const tagName = jsx.openingElement.name.name;
-      
+
       let namespace = null;
       let elems = [];
       for (let i = 0; i < jsx.openingElement.attributes.length; i++) {
@@ -92,10 +142,14 @@ export default function (babel) {
                   t.memberExpression(arg, hasOwnProperty),
                   [ iter ]
                 ),
-                setAttr(
-                  name,
-                  iter,
-                  t.memberExpression(arg, iter, true)
+                t.blockStatement(
+                  setAttr(
+                    name,
+                    iter,
+                    t.memberExpression(arg, iter, true),
+                    opts,
+                    path
+                  )
                 )
               )
             )
@@ -105,17 +159,17 @@ export default function (babel) {
             namespace = attribute.value;
             continue;
           }
-          
+
           let value = attribute.value;
           if (t.isJSXExpressionContainer(value)) value = value.expression;
           elems.push(
-            setAttr(name, t.stringLiteral(attribute.name.name), value)
+            ...setAttr(name, t.stringLiteral(attribute.name.name), value, opts, path)
           )
         };
       }
-      
+
       let call;
-      
+
       if (tagName === "DocumentFragment") {
         call = t.callExpression(
           t.memberExpression(document, createDocumentFragment),
@@ -132,12 +186,12 @@ export default function (babel) {
           [t.stringLiteral(tagName)]
         );
       }
-      
+
       const decl = t.variableDeclaration(
         "const", [t.variableDeclarator(name, call)]
       );
       elems.unshift(decl);
-      
+
       for (let i = 0; i < jsx.children.length; i++) {
         let child = generateHTMLNode(path, jsx.children[i], opts);
         if (child === null) continue;
@@ -165,7 +219,7 @@ export default function (babel) {
           elems.push(append(name, child.id));
         }
       }
-      
+
       return { id: name, elems: elems };
     } else if (t.isJSXText(jsx)) {
       if (opts.noWhitespaceOnly && !jsx.value.trim()) {
@@ -195,7 +249,7 @@ export default function (babel) {
       return { id: null, elems: [jsx] };
     }
   }
-  
+
   return {
     name: "ast-transform", // not required
     visitor: {
@@ -214,8 +268,3 @@ export default function (babel) {
     }
   };
 }
-
-
-
-
-
